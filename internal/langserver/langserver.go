@@ -149,8 +149,8 @@ func (ls *langServer) StartTCP(address string) error {
 // singleServer is a wrapper around jrpc2.NewServer providing support
 // for server.Service (Assigner/Finish interface)
 type singleServer struct {
-	srv        *jrpc2.Server
-	finishFunc func(jrpc2.ServerStatus)
+	srv *jrpc2.Server
+	svc server.Service
 }
 
 func Server(svc server.Service, opts *jrpc2.ServerOptions) (*singleServer, error) {
@@ -160,8 +160,8 @@ func Server(svc server.Service, opts *jrpc2.ServerOptions) (*singleServer, error
 	}
 
 	return &singleServer{
-		srv:        jrpc2.NewServer(assigner, opts),
-		finishFunc: svc.Finish,
+		srv: jrpc2.NewServer(assigner, opts),
+		svc: svc,
 	}, nil
 }
 
@@ -175,8 +175,9 @@ func (ss *singleServer) StartAndWait(ch channel.Channel) {
 }
 
 func (ss *singleServer) Wait() {
+	assigner, _ := ss.svc.Assigner()
 	status := ss.srv.WaitStatus()
-	ss.finishFunc(status)
+	ss.svc.Finish(assigner, status)
 }
 
 func (ss *singleServer) Stop() {
